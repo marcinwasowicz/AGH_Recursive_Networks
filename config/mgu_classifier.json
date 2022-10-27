@@ -1,0 +1,9 @@
+{
+  "type": "mgu",
+  "lr": 1e-4,
+  "batch_size": 25, 
+  "epochs": 20,
+  "n_ary": 2,
+  "h_size": 100,
+  "save_path": "models/mgu_classifier"
+}
