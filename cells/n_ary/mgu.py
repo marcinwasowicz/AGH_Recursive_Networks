@@ -11,7 +11,7 @@ class NTreeMGU(nn.Module):
         self._n_ary = n_ary
         self._h_size = h_size
 
-        self.W = nn.Linear(x_size, 2 * h_size)
+        self.W = nn.Linear(x_size, (1 + n_ary) * h_size)
 
         self.U_h_candidate = nn.Linear(n_ary * h_size, h_size, bias=False)
         self.U_f = nn.Linear(n_ary * h_size, n_ary * h_size, bias=False)
@@ -41,7 +41,7 @@ class NTreeMGU(nn.Module):
     def _update_function(self, nodes):
         wx = nodes.data["wx"]
         w_h_candidate_x, w_f_x = th.tensor_split(wx, [self._h_size], 1)
-        f = th.sigmoid(nodes.data["f"] + w_f_x.repeat(1, self._n_ary)).view(
+        f = th.sigmoid(nodes.data["f"] + w_f_x).view(
             nodes.data["h"].size(0), self._n_ary, self._h_size
         )
         h_candidate = th.tanh(w_h_candidate_x)

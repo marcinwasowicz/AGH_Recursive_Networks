@@ -11,7 +11,7 @@ class NTreeGRU(nn.Module):
         self._n_ary = n_ary
         self._h_size = h_size
 
-        self.W = nn.Linear(x_size, 3 * h_size)
+        self.W = nn.Linear(x_size, (2 + n_ary) * h_size)
 
         self.U_r = nn.Linear(n_ary * h_size, h_size, bias=False)
         self.U_h_candidate = nn.Linear(n_ary * h_size, h_size, bias=False)
@@ -48,7 +48,7 @@ class NTreeGRU(nn.Module):
         _w_r_x, w_h_candidate_x, w_z_x = th.tensor_split(
             wx, [self._h_size, 2 * self._h_size], 1
         )
-        z = th.sigmoid(nodes.data["z"] + w_z_x.repeat(1, self._n_ary)).view(
+        z = th.sigmoid(nodes.data["z"] + w_z_x).view(
             nodes.data["h"].size(0), self._n_ary, self._h_size
         )
         h_candidate = th.tanh(w_h_candidate_x)

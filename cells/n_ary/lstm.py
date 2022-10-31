@@ -11,7 +11,7 @@ class NTreeLSTM(nn.Module):
         self._n_ary = n_ary
         self._h_size = h_size
 
-        self.W = nn.Linear(x_size, 4 * h_size)
+        self.W = nn.Linear(x_size, (3 + n_ary) * h_size)
 
         self.U_iou = nn.Linear(n_ary * h_size, 3 * h_size, bias=False)
         self.U_f = nn.Linear(n_ary * h_size, n_ary * h_size, bias=False)
@@ -29,7 +29,7 @@ class NTreeLSTM(nn.Module):
 
         wx = nodes.data["wx"]
         w_iou_x, wx_f = th.tensor_split(wx, [3 * self._h_size], dim=1)
-        f = th.sigmoid(self.U_f(h_cat) + wx_f.repeat(1, self._n_ary)).view(
+        f = th.sigmoid(self.U_f(h_cat) + wx_f).view(
             nodes.mailbox["h"].size(0), self._n_ary, self._h_size
         )
         c_padding_size = self._n_ary - nodes.mailbox["c"].size(1)
