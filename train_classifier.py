@@ -1,5 +1,6 @@
 from copy import deepcopy
 import json
+import sys
 
 import dgl
 from dgl.data.tree import SSTDataset
@@ -8,14 +9,20 @@ import torch.nn.functional as F
 import torch as th
 from torch.utils.data import DataLoader
 
-from cells import NTreeGRU, NTreeLSTM, NTreeMGU
+from cells import NTreeGRU, NTreeLSTM, NTreeMGU, ChildSumTreeLSTM
 from networks import TreeNetClassifier
 
-with open("./config/mgu_classifier.json", "r") as fd:
+config_path = sys.argv[1]
+with open(config_path, "r") as fd:
     CONFIG = json.load(fd)
 
 X_SIZE = 300
-CELLS = {"lstm": NTreeLSTM, "mgu": NTreeMGU, "gru": NTreeGRU}
+CELLS = {
+    "lstm": NTreeLSTM,
+    "mgu": NTreeMGU,
+    "gru": NTreeGRU,
+    "child_sum_lstm": ChildSumTreeLSTM,
+}
 
 
 def make_data_loader(dataset):
