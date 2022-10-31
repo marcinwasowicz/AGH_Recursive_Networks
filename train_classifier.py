@@ -9,7 +9,14 @@ import torch.nn.functional as F
 import torch as th
 from torch.utils.data import DataLoader
 
-from cells import NTreeGRU, NTreeLSTM, NTreeMGU, ChildSumTreeLSTM, ChildSumTreeGRU
+from cells import (
+    NTreeGRU,
+    NTreeLSTM,
+    NTreeMGU,
+    ChildSumTreeLSTM,
+    ChildSumTreeGRU,
+    ChildSumTreeMGU,
+)
 from networks import TreeNetClassifier
 
 config_path = sys.argv[1]
@@ -23,6 +30,7 @@ CELLS = {
     "gru": NTreeGRU,
     "child_sum_lstm": ChildSumTreeLSTM,
     "child_sum_gru": ChildSumTreeGRU,
+    "child_sum_mgu": ChildSumTreeMGU,
 }
 
 
