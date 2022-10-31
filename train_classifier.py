@@ -16,6 +16,7 @@ from cells import (
     ChildSumTreeLSTM,
     ChildSumTreeGRU,
     ChildSumTreeMGU,
+    SingleForgetGateTreeLSTM,
 )
 from networks import TreeNetClassifier
 
@@ -31,6 +32,7 @@ CELLS = {
     "child_sum_lstm": ChildSumTreeLSTM,
     "child_sum_gru": ChildSumTreeGRU,
     "child_sum_mgu": ChildSumTreeMGU,
+    "single_gate_lstm": SingleForgetGateTreeLSTM,
 }
 
 
