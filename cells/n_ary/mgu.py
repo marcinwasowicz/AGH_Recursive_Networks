@@ -27,26 +27,21 @@ class NTreeMGU(nn.Module):
         )
         h_cat = th.cat((h, h_padding), dim=1)
         f = self.U_f(h_cat)
-        wx = nodes.data["wx"]
-        h_candidate = self.U_h_candidate(f * h)
-        wx[:, 0 : self._h_size] += h_candidate
-        return {
-            "wx": wx,
-            "f": f,
-            "h": th.sum(
-                (f * h).view(nodes.data["h"].size(0), self._n_ary, self._h_size), 1
-            ),
-        }
+        return {"f": f, "h_cat": h_cat}
 
     def _update_function(self, nodes):
         wx = nodes.data["wx"]
         w_h_candidate_x, w_f_x = th.tensor_split(wx, [self._h_size], 1)
-        f = th.sigmoid(nodes.data["f"] + w_f_x).view(
-            nodes.data["h"].size(0), self._n_ary, self._h_size
+        f = th.sigmoid(nodes.data["f"] + w_f_x)
+        h_candidate = th.tanh(
+            w_h_candidate_x + self.U_h_candidate(f * nodes.data["h_cat"])
         )
-        h_candidate = th.tanh(w_h_candidate_x)
+        f = f.view(nodes.data["f"].size(0), self._n_ary, self._h_size)
+        h = nodes.data["h_cat"].view(
+            nodes.data["h_cat"].size(0), self._n_ary, self._h_size
+        )
         f_sum = th.sum(f, 1)
-        h = nodes.data["h"] + (th.ones(*f_sum.size()) - f_sum) * h_candidate
+        h = (th.ones(*f_sum.size()) - f_sum) * h_candidate + th.sum(f * h, 1)
         return {"h": h}
 
     def forward(self, input: RecursiveCellInput):
@@ -57,6 +52,7 @@ class NTreeMGU(nn.Module):
         input.get_graph().ndata["wx"] = self.W(x)
         input.get_graph().ndata["h"] = th.zeros((n, self._h_size))
         input.get_graph().ndata["f"] = th.zeros((n, self._n_ary * self._h_size))
+        input.get_graph().ndata["h_cat"] = th.zeros((n, self._n_ary * self._h_size))
 
         input.get_graph().prop_nodes(
             nodes_generator=nodes_generator,
