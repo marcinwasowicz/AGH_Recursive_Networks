@@ -29,7 +29,7 @@ class SingleForgetGateTreeLSTM(nn.Module):
         wx = nodes.data["wx"]
         wx += self.U(h_cat)
         _w_iou_x, f_x = th.tensor_split(wx, [3 * self._h_size], dim=1)
-        f = th.sigmoid(f_x).view(nodes.mailbox["h"].size(0), self._h_size)
+        f = th.sigmoid(f_x)
         c_padding_size = self._n_ary - nodes.mailbox["c"].size(1)
         c_padding = h_cat.new_zeros(
             size=(nodes.mailbox["c"].size(0), c_padding_size, self._h_size)
