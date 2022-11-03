@@ -22,14 +22,14 @@ class ChildSumTreeGRU(nn.Module):
     def _reduce_function(self, nodes):
         wx = nodes.data["wx"]
         h_sum = th.sum(nodes.mailbox["h"], 1)
-        w_r_x, _w_h_candidate_x, _w_z_x = th.tensor_split(
+        w_r_x, _w_h_candidate_x, w_z_x = th.tensor_split(
             wx, [self._h_size, 2 * self._h_size], 1
         )
         r = th.sigmoid(w_r_x + self.U_r(h_sum))
         h_candidate = self.U_h_candidate(r * h_sum)
         wx[:, self._h_size : 2 * self._h_size] += h_candidate
         z = self.U_z(nodes.mailbox["h"])
-        return {"wx": wx, "z": z, "h": th.sum(z * nodes.mailbox["h"], 1)}
+        return {"wx": wx, "z": z, "h_children": nodes.mailbox["h"]}
 
     def _update_function(self, nodes):
         wx = nodes.data["wx"]
@@ -40,7 +40,8 @@ class ChildSumTreeGRU(nn.Module):
         z = th.sigmoid(z + w_z_x.unsqueeze(1).repeat(1, z.size(1), 1))
         h_candidate = th.tanh(w_h_candidate_x)
         z_sum = th.sum(z, 1)
-        h = nodes.data["h"] + (th.ones(*z_sum.size()) - z_sum) * h_candidate
+        h = th.sum(z * nodes.data["h_children"], 1)
+        h = h + (th.ones(*z_sum.size()) - z_sum) * h_candidate
         return {"h": h}
 
     def forward(self, input: RecursiveCellInput):
@@ -50,6 +51,7 @@ class ChildSumTreeGRU(nn.Module):
 
         input.get_graph().ndata["wx"] = self.W(x)
         input.get_graph().ndata["h"] = th.zeros((n, self._h_size))
+        input.get_graph().ndata["h_children"] = th.zeros((n, 1, self._h_size))
         input.get_graph().ndata["z"] = th.zeros((n, 1, self._h_size))
 
         input.get_graph().prop_nodes(

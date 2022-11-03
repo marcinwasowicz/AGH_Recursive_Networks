@@ -1,6 +1,6 @@
 {
   "type": "child_sum_gru",
-  "lr": 1e-4,
+  "lr": 0.05,
   "batch_size": 25,
   "epochs": 20,
   "n_ary": 2,
