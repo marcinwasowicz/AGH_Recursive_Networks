@@ -20,29 +20,27 @@ class ChildSumTreeMGU(nn.Module):
 
     def _reduce_function(self, nodes):
         f = self.U_f(nodes.mailbox["h"])
-        h_sum = th.sum(nodes.mailbox["h"], 1)
-        wx = nodes.data["wx"]
-        h_candidate = th.sum(self.U_h_candidate(f * nodes.mailbox["h"]), 1)
-        wx[:, 0 : self._h_size] += h_candidate
-        return {"wx": wx, "f": f, "h": th.sum(f * nodes.mailbox["h"], 1)}
+        return {"f": f, "h_children": nodes.mailbox["h"]}
 
     def _update_function(self, nodes):
         wx = nodes.data["wx"]
         w_h_candidate_x, w_f_x = th.tensor_split(wx, [self._h_size], 1)
         f = nodes.data["f"]
         f = th.sigmoid(f + w_f_x.unsqueeze(1).repeat(1, f.size(1), 1))
-        h_candidate = th.tanh(w_h_candidate_x)
+        f_dot_h = f * nodes.data["h_children"]
+        h_candidate = th.tanh(w_h_candidate_x + th.sum(self.U_h_candidate(f_dot_h), 1))
         f_sum = th.sum(f, 1)
-        h = nodes.data["h"] + (th.ones(*f_sum.size()) - f_sum) * h_candidate
+        h = th.sum(f_dot_h, 1) + (th.ones(*f_sum.size()) - f_sum) * h_candidate
         return {"h": h}
 
-    def forward(self, input):
+    def forward(self, input: RecursiveCellInput):
         x = input.get_embeddings()
         n = input.get_graph().number_of_nodes()
         nodes_generator = dgl.topological_nodes_generator(input.get_graph())
 
         input.get_graph().ndata["wx"] = self.W(x)
         input.get_graph().ndata["h"] = th.zeros((n, self._h_size))
+        input.get_graph().ndata["h_children"] = th.zeros((n, 1, self._h_size))
         input.get_graph().ndata["f"] = th.zeros((n, 1, self._h_size))
 
         input.get_graph().prop_nodes(
