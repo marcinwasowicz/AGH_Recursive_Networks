@@ -28,20 +28,14 @@ class NTreeGRU(nn.Module):
         )
         h_cat = th.cat((h, h_padding), dim=1)
         wx = nodes.data["wx"]
-        w_r_x, _w_h_candidate_x, _w_z_x = th.tensor_split(
+        w_r_x, _w_h_candidate_x, w_z_x = th.tensor_split(
             wx, [self._h_size, 2 * self._h_size], 1
         )
         r = th.sigmoid(w_r_x + self.U_r(h_cat))
-        h_candidate = self.U_h_candidate(r.repeat(1, self._n_ary) * h)
+        h_candidate = self.U_h_candidate(r.repeat(1, self._n_ary) * h_cat)
         wx[:, self._h_size : 2 * self._h_size] += h_candidate
         z = self.U_z(h_cat)
-        return {
-            "wx": wx,
-            "z": z,
-            "h": th.sum(
-                (z * h).view(nodes.data["h"].size(0), self._n_ary, self._h_size), 1
-            ),
-        }
+        return {"wx": wx, "z": z, "h_cat": h_cat}
 
     def _update_function(self, nodes):
         wx = nodes.data["wx"]
@@ -49,11 +43,14 @@ class NTreeGRU(nn.Module):
             wx, [self._h_size, 2 * self._h_size], 1
         )
         z = th.sigmoid(nodes.data["z"] + w_z_x).view(
-            nodes.data["h"].size(0), self._n_ary, self._h_size
+            nodes.data["z"].size(0), self._n_ary, self._h_size
         )
         h_candidate = th.tanh(w_h_candidate_x)
         z_sum = th.sum(z, 1)
-        h = nodes.data["h"] + (th.ones(*z_sum.size()) - z_sum) * h_candidate
+        h = nodes.data["h_cat"].view(
+            nodes.data["h_cat"].size(0), self._n_ary, self._h_size
+        )
+        h = th.sum(h * z, 1) + (th.ones(*z_sum.size()) - z_sum) * h_candidate
         return {"h": h}
 
     def forward(self, input: RecursiveCellInput):
@@ -64,6 +61,7 @@ class NTreeGRU(nn.Module):
         input.get_graph().ndata["wx"] = self.W(x)
         input.get_graph().ndata["h"] = th.zeros((n, self._h_size))
         input.get_graph().ndata["z"] = th.zeros((n, self._n_ary * self._h_size))
+        input.get_graph().ndata["h_cat"] = th.zeros((n, self._n_ary * self._h_size))
 
         input.get_graph().prop_nodes(
             nodes_generator=nodes_generator,
