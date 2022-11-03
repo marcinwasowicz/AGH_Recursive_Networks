@@ -32,7 +32,7 @@ class SingleForgetGateTreeGRU(nn.Module):
         )
         z, r = th.tensor_split(self.U_zr(h_cat), [self._h_size], 1)
         r = th.sigmoid(w_r_x + r)
-        h_candidate = self.U_h_candidate(r.repeat(1, self._n_ary) * h)
+        h_candidate = self.U_h_candidate(r.repeat(1, self._n_ary) * h_cat)
         wx[:, self._h_size : 2 * self._h_size] += h_candidate
         return {"wx": wx, "z": z, "h": th.sum(nodes.mailbox["h"], 1)}
 
@@ -41,9 +41,7 @@ class SingleForgetGateTreeGRU(nn.Module):
         _w_r_x, w_h_candidate_x, w_z_x = th.tensor_split(
             wx, [self._h_size, 2 * self._h_size], 1
         )
-        z = th.sigmoid(nodes.data["z"] + w_z_x).view(
-            nodes.data["h"].size(0), self._h_size
-        )
+        z = th.sigmoid(nodes.data["z"] + w_z_x)
         h_candidate = th.tanh(w_h_candidate_x)
         h = nodes.data["h"] * z + (th.ones(*z.size()) - z) * h_candidate
         return {"h": h}
