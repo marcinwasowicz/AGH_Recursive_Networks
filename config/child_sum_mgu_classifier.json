@@ -2,9 +2,9 @@
   "type": "child_sum_mgu",
   "lr": 0.05,
   "batch_size": 25,
-  "epochs": 20,
+  "epochs": 10,
   "n_ary": 2,
-  "h_size": 100,
+  "h_size": 150,
   "save_path": "models/sst_child_sum_mgu_glove-wiki-gigaword-300_classifier",
   "embeddings": "glove-wiki-gigaword-300"
 }
