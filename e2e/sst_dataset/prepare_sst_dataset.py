@@ -23,12 +23,14 @@ def adjust_raw_embeddings(raw_embeddings, sst_dataset_split):
     return new_word_count, idx_mapping
 
 
-def remap_embeddings(sst_dataset_split, idx_mapping):
+def remap_embeddings(sst_dataset_split, idx_mapping, no_input_embedding_idx):
     for graph in sst_dataset_split:
         for i in range(len(graph.ndata["x"])):
-            if graph.ndata["x"][i] == -1:
-                continue
-            graph.ndata["x"][i] = idx_mapping[int(graph.ndata["x"][i])]
+            graph.ndata["x"][i] = (
+                idx_mapping[int(graph.ndata["x"][i])]
+                if graph.ndata["x"][i] != -1
+                else no_input_embedding_idx
+            )
 
 
 if __name__ == "__main__":
@@ -54,18 +56,21 @@ if __name__ == "__main__":
     new_word_count = train_new_word_count + valid_new_word_count + test_new_word_count
     print(f"Encountered {new_word_count} unknown words out of {train.vocab_size}")
 
-    new_embeddings = np.random.rand(new_word_count, raw_embeddings.vector_size)
-    embeddings = np.concatenate([raw_embeddings.vectors, new_embeddings], axis=0)
-
+    new_embeddings = np.array(th.nn.Embedding(new_word_count, raw_embeddings.vector_size).weight.data)
+    no_input_embedding = np.zeros((1, raw_embeddings.vector_size))
+    embeddings = np.concatenate(
+        [raw_embeddings.vectors, new_embeddings, no_input_embedding], axis=0
+    )
     embeddings = th.from_numpy(embeddings).float()
     th.save(
         embeddings,
         f"embeddings/sst_{config['embeddings']}_embeddings.pt",
     )
 
-    remap_embeddings(train, train_index_mapping)
-    remap_embeddings(test, test_index_mapping)
-    remap_embeddings(valid, valid_index_mapping)
+    no_input_embedding_idx = len(embeddings) - 1
+    remap_embeddings(train, train_index_mapping, no_input_embedding_idx)
+    remap_embeddings(test, test_index_mapping, no_input_embedding_idx)
+    remap_embeddings(valid, valid_index_mapping, no_input_embedding_idx)
 
     with open(f"data/sst_train_{config['embeddings']}.pkl", "wb+") as train_fd:
         pickle.dump(train, train_fd)

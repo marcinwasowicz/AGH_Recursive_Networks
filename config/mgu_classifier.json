@@ -5,6 +5,6 @@
   "epochs": 10,
   "n_ary": 2,
   "h_size": 150,
-  "save_path": "models/sst_1_mgu_glove-wiki-gigaword-300_classifier",
+  "save_path": "models/sst_mgu_glove-wiki-gigaword-300_classifier",
   "embeddings": "glove-wiki-gigaword-300"
 }
