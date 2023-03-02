@@ -12,8 +12,8 @@ class TreeNetClassifier(nn.Module):
         self.dropout = nn.Dropout()
         self.response_layer = nn.Linear(cell_h_size, num_classes)
 
-    def forward(self, graph, word_key, label_key, mask_key):
-        embeddings = self.embedding(graph.ndata[word_key] * graph.ndata[mask_key])
+    def forward(self, graph, word_key, label_key):
+        embeddings = self.embedding(graph.ndata[word_key])
         labels = graph.ndata[label_key]
         cell_input = RecursiveCellInput(graph, embeddings, labels)
         return self.response_layer(self.dropout(self.cell(cell_input)))

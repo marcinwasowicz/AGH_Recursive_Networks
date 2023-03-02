@@ -1,4 +1,5 @@
-black=21.10b
+black==21.10b
 dgl==0.9.1
+gensim==4.2.0
 nltk==3.7
 torch==1.11.0

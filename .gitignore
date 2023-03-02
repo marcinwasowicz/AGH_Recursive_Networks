@@ -133,3 +133,5 @@ dmypy.json
 
 # local storage
 models/
+embeddings/
+data/
