@@ -55,8 +55,11 @@ if __name__ == "__main__":
 
     new_word_count = train_new_word_count + valid_new_word_count + test_new_word_count
     print(f"Encountered {new_word_count} unknown words out of {train.vocab_size}")
-
-    new_embeddings = np.array(th.nn.Embedding(new_word_count, raw_embeddings.vector_size).weight.data)
+    new_embeddings = np.random.uniform(
+        -1 / np.sqrt(raw_embeddings.vector_size),
+        1 / np.sqrt(raw_embeddings.vector_size),
+        size=(new_word_count, raw_embeddings.vector_size),
+    )
     no_input_embedding = np.zeros((1, raw_embeddings.vector_size))
     embeddings = np.concatenate(
         [raw_embeddings.vectors, new_embeddings, no_input_embedding], axis=0
