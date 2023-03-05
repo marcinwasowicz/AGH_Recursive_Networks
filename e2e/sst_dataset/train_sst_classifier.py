@@ -47,16 +47,17 @@ def evaluate_classifier(classifier, dataset_split, batch_size):
     total = 0
     with th.no_grad():
         for graph in make_data_loader(dataset_split, batch_size):
-            root_idx = 0
-            assert graph.out_degrees(root_idx) == 0
-            assert graph.in_degrees(root_idx) != 0
-
             response = classifier(graph, "x", "y")
             pred = th.argmax(response, 1)
             total_correct += float(
-                th.sum(th.eq(graph.ndata["y"][root_idx], pred[root_idx]))
+                th.sum(
+                    th.eq(
+                        graph.ndata["y"][graph.out_degrees() == 0],
+                        pred[graph.out_degrees() == 0],
+                    )
+                )
             )
-            total += 1
+            total += graph.batch_size
     return total_correct / total
 
 
@@ -91,7 +92,6 @@ if __name__ == "__main__":
     batch_size = config["batch_size"]
 
     for epoch in range(config["epochs"]):
-        total_train_loss = 0
         for graph in make_data_loader(train, batch_size):
             response = classifier(graph, "x", "y")
             probabilities = F.log_softmax(response, 1)
