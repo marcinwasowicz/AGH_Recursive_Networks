@@ -36,7 +36,7 @@ def process_data(parents, tokens, embeddings):
 
     iter = 0
     idx = []
-    
+
     for deg in graph.in_degrees().tolist():
         if deg != 0:
             idx.append(no_input_embedding_idx)
