@@ -112,7 +112,7 @@ if __name__ == "__main__":
         regressor.parameters(), lr=config["lr"], weight_decay=1e-4
     )
 
-    best_mse = 16.00 # Theoretically maximal MSE we can get
+    best_mse = 16.00  # Theoretically maximal MSE we can get
     best_model = None
     batch_size = config["batch_size"]
 

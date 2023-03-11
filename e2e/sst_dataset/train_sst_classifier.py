@@ -62,6 +62,7 @@ def evaluate_classifier(classifier, dataset_split, batch_size):
 
 
 if __name__ == "__main__":
+    th.manual_seed = 42
     with open(sys.argv[1], "r") as config_fd:
         config = json.load(config_fd)
 
@@ -95,7 +96,10 @@ if __name__ == "__main__":
         for graph in make_data_loader(train, batch_size):
             response = classifier(graph, "x", "y")
             probabilities = F.log_softmax(response, 1)
-            loss = F.nll_loss(probabilities, graph.ndata["y"])
+            loss = F.nll_loss(
+                probabilities[graph.ndata["y"] != -1],
+                graph.ndata["y"][graph.ndata["y"] != -1],
+            )
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
