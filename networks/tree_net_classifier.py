@@ -1,4 +1,3 @@
-from torch import embedding
 import torch.nn as nn
 
 from cells import RecursiveCellInput

@@ -1,1 +1,2 @@
 from networks.tree_net_classifier import TreeNetClassifier
+from networks.tree_net_similarity_regressor import TreeNetSimilarityRegressor
