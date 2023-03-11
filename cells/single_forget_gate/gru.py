@@ -11,10 +11,10 @@ class SingleForgetGateTreeGRU(nn.Module):
         self._n_ary = n_ary
         self._h_size = h_size
 
-        self.W = nn.Linear(x_size, 3 * h_size)
+        self.W = nn.Linear(x_size, h_size)
 
-        self.U_zr = nn.Linear(n_ary * h_size, 2 * h_size, bias=False)
-        self.U_h_candidate = nn.Linear(n_ary * h_size, h_size, bias=False)
+        self.U_zr = nn.Linear(n_ary * h_size, 2 * h_size)
+        self.U_h_candidate = nn.Linear(n_ary * h_size, h_size)
 
     def _message_function(self, edges):
         return {"h": edges.src["h"]}
@@ -26,40 +26,24 @@ class SingleForgetGateTreeGRU(nn.Module):
             size=(nodes.mailbox["h"].size(0), h_padding_size * self._h_size)
         )
         h_cat = th.cat((h, h_padding), dim=1)
-        wx = nodes.data["wx"]
-        w_r_x, _w_h_candidate_x, _w_z_x = th.tensor_split(
-            wx, [self._h_size, 2 * self._h_size], 1
-        )
         z, r = th.tensor_split(self.U_zr(h_cat), [self._h_size], 1)
-        r = th.sigmoid(w_r_x + r)
+        z, r = th.sigmoid(z), th.sigmoid(r)
         h_candidate = self.U_h_candidate(r.repeat(1, self._n_ary) * h_cat)
-        wx[:, self._h_size : 2 * self._h_size] += h_candidate
-        return {"wx": wx, "z": z, "h": th.sum(nodes.mailbox["h"], 1)}
-
-    def _update_function(self, nodes):
-        wx = nodes.data["wx"]
-        _w_r_x, w_h_candidate_x, w_z_x = th.tensor_split(
-            wx, [self._h_size, 2 * self._h_size], 1
-        )
-        z = th.sigmoid(nodes.data["z"] + w_z_x)
-        h_candidate = th.tanh(w_h_candidate_x)
-        h = nodes.data["h"] * z + (th.ones(*z.size()) - z) * h_candidate
+        h_candidate = th.tanh(h_candidate)
+        h = th.sum(nodes.mailbox["h"], 1) * z + (th.ones(*z.size()) - z) * h_candidate
         return {"h": h}
 
     def forward(self, input: RecursiveCellInput):
         x = input.get_embeddings()
-        n = input.get_graph().number_of_nodes()
         nodes_generator = dgl.topological_nodes_generator(input.get_graph())
 
-        input.get_graph().ndata["wx"] = self.W(x)
-        input.get_graph().ndata["h"] = th.zeros((n, self._h_size))
-        input.get_graph().ndata["z"] = th.zeros((n, self._h_size))
+        initial_state = th.tanh(self.W(x))
+        input.get_graph().ndata["h"] = initial_state
 
         input.get_graph().prop_nodes(
             nodes_generator=nodes_generator,
             message_func=self._message_function,
             reduce_func=self._reduce_function,
-            apply_node_func=self._update_function,
         )
 
         return input.get_graph().ndata["h"]
