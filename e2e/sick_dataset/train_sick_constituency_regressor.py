@@ -112,7 +112,7 @@ if __name__ == "__main__":
         regressor.parameters(), lr=config["lr"], weight_decay=1e-4
     )
 
-    best_mse = 0.0
+    best_mse = 16.00 # Theoretically maximal MSE we can get
     best_model = None
     batch_size = config["batch_size"]
 
@@ -146,12 +146,12 @@ if __name__ == "__main__":
                 epoch, total_loss / batch_size, mse
             )
         )
-        if mse > best_mse:
+        if mse < best_mse:
             best_mse = mse
             best_model = deepcopy(regressor)
             th.save(best_model.state_dict(), config["save_path"])
 
-    acc = evaluate_regressor(
+    mse = evaluate_regressor(
         best_model, test_a, test_b, test_sim, batch_size, config["num_classes"]
     )
-    print("Test MSE {:.4f}".format(acc))
+    print("Test MSE {:.4f}".format(mse))
