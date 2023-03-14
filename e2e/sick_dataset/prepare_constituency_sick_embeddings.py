@@ -72,13 +72,13 @@ if __name__ == "__main__":
     with open(sys.argv[1], "r") as config_fd:
         config = json.load(config_fd)
 
-    for embeddings in config["embeddings"]:
-        raw_embeddings = gensim.downloader.load(embeddings)
+    for embeddings_name in config["embeddings"]:
+        raw_embeddings = gensim.downloader.load(embeddings_name)
         vocabulary = [i[0] for i in read_and_split_lines("data/sick/vocab-cased.txt")]
 
         new_word_count = update_embeddings(raw_embeddings, vocabulary)
         print(
-            f"Encountered {new_word_count} unknown words out of {len(vocabulary)} for embeddings {embeddings}"
+            f"Encountered {new_word_count} unknown words out of {len(vocabulary)} for embeddings {embeddings_name}"
         )
 
         train = create_split(
@@ -118,14 +118,14 @@ if __name__ == "__main__":
         embeddings = th.from_numpy(embeddings).float()
         th.save(
             embeddings,
-            f"embeddings/sick_constituency_{embeddings}_embeddings.pt",
+            f"embeddings/sick_constituency_{embeddings_name}_embeddings.pt",
         )
 
-        with open(f"data/sick_constituency_train_{embeddings}.pkl", "wb+") as train_fd:
+        with open(f"data/sick_constituency_train_{embeddings_name}.pkl", "wb+") as train_fd:
             pickle.dump(train, train_fd)
 
-        with open(f"data/sick_constituency_valid_{embeddings}.pkl", "wb+") as valid_fd:
+        with open(f"data/sick_constituency_valid_{embeddings_name}.pkl", "wb+") as valid_fd:
             pickle.dump(valid, valid_fd)
 
-        with open(f"data/sick_constituency_test_{embeddings}.pkl", "wb+") as test_fd:
+        with open(f"data/sick_constituency_test_{embeddings_name}.pkl", "wb+") as test_fd:
             pickle.dump(test, test_fd)
