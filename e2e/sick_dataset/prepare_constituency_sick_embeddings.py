@@ -72,63 +72,60 @@ if __name__ == "__main__":
     with open(sys.argv[1], "r") as config_fd:
         config = json.load(config_fd)
 
-    raw_embeddings = gensim.downloader.load(config["embeddings"])
-    vocabulary = [i[0] for i in read_and_split_lines("data/sick/vocab-cased.txt")]
+    for embeddings in config["embeddings"]:
+        raw_embeddings = gensim.downloader.load(embeddings)
+        vocabulary = [i[0] for i in read_and_split_lines("data/sick/vocab-cased.txt")]
 
-    new_word_count = update_embeddings(raw_embeddings, vocabulary)
-    print(f"Encountered {new_word_count} unknown words out of {len(vocabulary)}")
+        new_word_count = update_embeddings(raw_embeddings, vocabulary)
+        print(
+            f"Encountered {new_word_count} unknown words out of {len(vocabulary)} for embeddings {embeddings}"
+        )
 
-    train = create_split(
-        "data/sick/train/a.cparents",
-        "data/sick/train/a.toks",
-        "data/sick/train/b.cparents",
-        "data/sick/train/b.toks",
-        "data/sick/train/sim.txt",
-        raw_embeddings,
-    )
-    valid = create_split(
-        "data/sick/dev/a.cparents",
-        "data/sick/dev/a.toks",
-        "data/sick/dev/b.cparents",
-        "data/sick/dev/b.toks",
-        "data/sick/dev/sim.txt",
-        raw_embeddings,
-    )
-    test = create_split(
-        "data/sick/test/a.cparents",
-        "data/sick/test/a.toks",
-        "data/sick/test/b.cparents",
-        "data/sick/test/b.toks",
-        "data/sick/test/sim.txt",
-        raw_embeddings,
-    )
+        train = create_split(
+            "data/sick/train/a.cparents",
+            "data/sick/train/a.toks",
+            "data/sick/train/b.cparents",
+            "data/sick/train/b.toks",
+            "data/sick/train/sim.txt",
+            raw_embeddings,
+        )
+        valid = create_split(
+            "data/sick/dev/a.cparents",
+            "data/sick/dev/a.toks",
+            "data/sick/dev/b.cparents",
+            "data/sick/dev/b.toks",
+            "data/sick/dev/sim.txt",
+            raw_embeddings,
+        )
+        test = create_split(
+            "data/sick/test/a.cparents",
+            "data/sick/test/a.toks",
+            "data/sick/test/b.cparents",
+            "data/sick/test/b.toks",
+            "data/sick/test/sim.txt",
+            raw_embeddings,
+        )
 
-    new_embeddings = np.random.uniform(
-        -1 / np.sqrt(raw_embeddings.vector_size),
-        1 / np.sqrt(raw_embeddings.vector_size),
-        size=(new_word_count, raw_embeddings.vector_size),
-    )
-    no_input_embedding = np.zeros((1, raw_embeddings.vector_size))
-    embeddings = np.concatenate(
-        [raw_embeddings.vectors, new_embeddings, no_input_embedding], axis=0
-    )
-    embeddings = th.from_numpy(embeddings).float()
-    th.save(
-        embeddings,
-        f"embeddings/sick_constituency_{config['embeddings']}_embeddings.pt",
-    )
+        new_embeddings = np.random.uniform(
+            -1 / np.sqrt(raw_embeddings.vector_size),
+            1 / np.sqrt(raw_embeddings.vector_size),
+            size=(new_word_count, raw_embeddings.vector_size),
+        )
+        no_input_embedding = np.zeros((1, raw_embeddings.vector_size))
+        embeddings = np.concatenate(
+            [raw_embeddings.vectors, new_embeddings, no_input_embedding], axis=0
+        )
+        embeddings = th.from_numpy(embeddings).float()
+        th.save(
+            embeddings,
+            f"embeddings/sick_constituency_{embeddings}_embeddings.pt",
+        )
 
-    with open(
-        f"data/sick_constituency_train_{config['embeddings']}.pkl", "wb+"
-    ) as train_fd:
-        pickle.dump(train, train_fd)
+        with open(f"data/sick_constituency_train_{embeddings}.pkl", "wb+") as train_fd:
+            pickle.dump(train, train_fd)
 
-    with open(
-        f"data/sick_constituency_valid_{config['embeddings']}.pkl", "wb+"
-    ) as valid_fd:
-        pickle.dump(valid, valid_fd)
+        with open(f"data/sick_constituency_valid_{embeddings}.pkl", "wb+") as valid_fd:
+            pickle.dump(valid, valid_fd)
 
-    with open(
-        f"data/sick_constituency_test_{config['embeddings']}.pkl", "wb+"
-    ) as test_fd:
-        pickle.dump(test, test_fd)
+        with open(f"data/sick_constituency_test_{embeddings}.pkl", "wb+") as test_fd:
+            pickle.dump(test, test_fd)

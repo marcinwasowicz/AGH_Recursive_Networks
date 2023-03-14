@@ -2,6 +2,7 @@ from copy import deepcopy
 import json
 import pickle
 import sys
+import warnings
 
 import dgl
 import torch.nn as nn
@@ -10,6 +11,7 @@ import torch as th
 from torch.utils.data import DataLoader
 
 sys.path.insert(0, "./")
+warnings.filterwarnings("ignore")
 
 from cells import (
     NTreeGRU,
@@ -61,38 +63,42 @@ def evaluate_classifier(classifier, dataset_split, batch_size):
     return total_correct / total
 
 
-if __name__ == "__main__":
-    th.manual_seed = 42
-    with open(sys.argv[1], "r") as config_fd:
-        config = json.load(config_fd)
-
-    with open(f"data/sst_train_{config['embeddings']}.pkl", "rb") as train_fd:
+def train_classifier(
+    model_type,
+    embeddings,
+    lr,
+    h_size,
+    batch_size,
+    n_ary,
+    num_classes,
+    epochs,
+):
+    print(
+        "Training process for the following config:\nmodel type: {}\nlearning rate: {}\nhidden size: {}\nbatch size: {}\nembeddings: {}".format(
+            model_type, lr, h_size, batch_size, embeddings
+        )
+    )
+    with open(f"data/sst_train_{embeddings}.pkl", "rb") as train_fd:
         train = pickle.load(train_fd)
 
-    with open(f"data/sst_valid_{config['embeddings']}.pkl", "rb") as valid_fd:
+    with open(f"data/sst_valid_{embeddings}.pkl", "rb") as valid_fd:
         valid = pickle.load(valid_fd)
 
-    with open(f"data/sst_test_{config['embeddings']}.pkl", "rb") as test_fd:
+    with open(f"data/sst_test_{embeddings}.pkl", "rb") as test_fd:
         test = pickle.load(test_fd)
 
     embedding_layer = nn.Embedding.from_pretrained(
-        th.load(f"embeddings/sst_{config['embeddings']}_embeddings.pt")
+        th.load(f"embeddings/sst_{embeddings}_embeddings.pt")
     )
-    cell = CELLS[config["type"]](
-        embedding_layer.embedding_dim, config["h_size"], config["n_ary"]
-    )
-    classifier = TreeNetClassifier(
-        embedding_layer, cell, config["h_size"], train.num_classes
-    )
-    optimizer = th.optim.Adagrad(
-        classifier.parameters(), lr=config["lr"], weight_decay=1e-4
-    )
+    cell = CELLS[model_type](embedding_layer.embedding_dim, h_size, n_ary)
+    classifier = TreeNetClassifier(embedding_layer, cell, h_size, num_classes)
+    optimizer = th.optim.Adagrad(classifier.parameters(), lr=lr, weight_decay=1e-4)
 
     best_acc = 0.0
     best_model = None
-    batch_size = config["batch_size"]
+    batch_size = batch_size
 
-    for epoch in range(config["epochs"]):
+    for epoch in range(epochs):
         for graph in make_data_loader(train, batch_size):
             response = classifier(graph, "x", "y")
             probabilities = F.log_softmax(response, 1)
@@ -109,7 +115,28 @@ if __name__ == "__main__":
         if acc > best_acc:
             best_acc = acc
             best_model = deepcopy(classifier)
-            th.save(best_model.state_dict(), config["save_path"])
 
     acc = evaluate_classifier(best_model, test, batch_size)
     print("Test accuracy {:.4f}".format(acc))
+
+
+if __name__ == "__main__":
+    th.manual_seed = 42
+    with open(sys.argv[1], "r") as config_fd:
+        config = json.load(config_fd)
+
+    for model_type in config["model_types"]:
+        for lr in config["lrs"]:
+            for h_size in config["h_sizes"]:
+                for batch_size in config["batch_sizes"]:
+                    for embeddings in config["embeddings"]:
+                        train_classifier(
+                            model_type,
+                            embeddings,
+                            lr,
+                            h_size,
+                            batch_size,
+                            config["n_ary"],
+                            config["num_classes"],
+                            config["epochs"],
+                        )

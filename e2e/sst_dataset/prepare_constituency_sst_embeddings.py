@@ -69,58 +69,52 @@ def create_split(
 if __name__ == "__main__":
     with open(sys.argv[1], "r") as config_fd:
         config = json.load(config_fd)
+    for embeddings in config["embeddings"]:
+        raw_embeddings = gensim.downloader.load(embeddings)
+        vocabulary = [i[0] for i in read_and_split_lines("data/sst/vocab-cased.txt")]
 
-    raw_embeddings = gensim.downloader.load(config["embeddings"])
-    vocabulary = [i[0] for i in read_and_split_lines("data/sst/vocab-cased.txt")]
+        new_word_count = update_embeddings(raw_embeddings, vocabulary)
+        print(f"Encountered {new_word_count} unknown words out of {len(vocabulary)}")
 
-    new_word_count = update_embeddings(raw_embeddings, vocabulary)
-    print(f"Encountered {new_word_count} unknown words out of {len(vocabulary)}")
+        train = create_split(
+            "data/sst/train/parents.txt",
+            "data/sst/train/sents.toks",
+            "data/sst/train/labels.txt",
+            raw_embeddings,
+        )
+        valid = create_split(
+            "data/sst/dev/parents.txt",
+            "data/sst/dev/sents.toks",
+            "data/sst/dev/labels.txt",
+            raw_embeddings,
+        )
+        test = create_split(
+            "data/sst/test/parents.txt",
+            "data/sst/test/sents.toks",
+            "data/sst/test/labels.txt",
+            raw_embeddings,
+        )
 
-    train = create_split(
-        "data/sst/train/parents.txt",
-        "data/sst/train/sents.toks",
-        "data/sst/train/labels.txt",
-        raw_embeddings,
-    )
-    valid = create_split(
-        "data/sst/dev/parents.txt",
-        "data/sst/dev/sents.toks",
-        "data/sst/dev/labels.txt",
-        raw_embeddings,
-    )
-    test = create_split(
-        "data/sst/test/parents.txt",
-        "data/sst/test/sents.toks",
-        "data/sst/test/labels.txt",
-        raw_embeddings,
-    )
+        new_embeddings = np.random.uniform(
+            -1 / np.sqrt(raw_embeddings.vector_size),
+            1 / np.sqrt(raw_embeddings.vector_size),
+            size=(new_word_count, raw_embeddings.vector_size),
+        )
+        no_input_embedding = np.zeros((1, raw_embeddings.vector_size))
+        embeddings = np.concatenate(
+            [raw_embeddings.vectors, new_embeddings, no_input_embedding], axis=0
+        )
+        embeddings = th.from_numpy(embeddings).float()
+        th.save(
+            embeddings,
+            f"embeddings/sst_constituency_{embeddings}_embeddings.pt",
+        )
 
-    new_embeddings = np.random.uniform(
-        -1 / np.sqrt(raw_embeddings.vector_size),
-        1 / np.sqrt(raw_embeddings.vector_size),
-        size=(new_word_count, raw_embeddings.vector_size),
-    )
-    no_input_embedding = np.zeros((1, raw_embeddings.vector_size))
-    embeddings = np.concatenate(
-        [raw_embeddings.vectors, new_embeddings, no_input_embedding], axis=0
-    )
-    embeddings = th.from_numpy(embeddings).float()
-    th.save(
-        embeddings,
-        f"embeddings/sst_constituency_{config['embeddings']}_embeddings.pt",
-    )
+        with open(f"data/sst_constituency_train_{embeddings}.pkl", "wb+") as train_fd:
+            pickle.dump(train, train_fd)
 
-    with open(
-        f"data/sst_constituency_train_{config['embeddings']}.pkl", "wb+"
-    ) as train_fd:
-        pickle.dump(train, train_fd)
+        with open(f"data/sst_constituency_valid_{embeddings}.pkl", "wb+") as valid_fd:
+            pickle.dump(valid, valid_fd)
 
-    with open(
-        f"data/sst_constituency_valid_{config['embeddings']}.pkl", "wb+"
-    ) as valid_fd:
-        pickle.dump(valid, valid_fd)
-
-    with open(
-        f"data/sst_constituency_test_{config['embeddings']}.pkl", "wb+"
-    ) as test_fd:
-        pickle.dump(test, test_fd)
+        with open(f"data/sst_constituency_test_{embeddings}.pkl", "wb+") as test_fd:
+            pickle.dump(test, test_fd)
