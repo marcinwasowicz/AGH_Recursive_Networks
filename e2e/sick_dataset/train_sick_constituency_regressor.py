@@ -59,14 +59,22 @@ def evaluate_regressor(
 ):
     total_mse = 0
     total_size = 0
+    regressor.eval()
     with th.no_grad():
         for graph_a, graph_b, similarity in zip(
             make_data_loader(dataset_split_a, batch_size),
             make_data_loader(dataset_split_b, batch_size),
             make_primitive_data_loader(similarity_split, batch_size),
         ):
+            if th.cuda.is_available():
+                graph_a = graph_a.to(th.device("cuda:0"))
+                graph_b = graph_b.to(th.device("cuda:0"))
+                similarity = similarity.to(th.device("cuda:0"))
+
             response = regressor(graph_a, graph_b, "x")
             pred = th.sum(th.range(1, num_classes) * response, dim=1)
+            if th.cuda.is_available():
+                pred = pred.to(th.device("cuda:0"))
             total_mse += th.sum((similarity - pred) ** 2)
             total_size += graph_a.batch_size
     return total_mse / total_size
@@ -82,10 +90,11 @@ def train_regressor(
     num_classes,
     sim_h_size,
     epochs,
+    repeat,
 ):
     print(
-        "Training process for the following config:\nmodel type: {}\nlearning rate: {}\nhidden size: {}\nbatch size: {}\nembeddings: {}".format(
-            model_type, lr, h_size, batch_size, embeddings
+        "Training process for the following config:\nmodel type: {}\nlearning rate: {}\nhidden size: {}\nbatch size: {}\nembeddings: {}\nrepeat: {}".format(
+            model_type, lr, h_size, batch_size, embeddings, repeat
         )
     )
     with open(f"data/sick_constituency_train_{embeddings}.pkl", "rb") as train_fd:
@@ -120,13 +129,22 @@ def train_regressor(
     best_model = None
     batch_size = batch_size
 
+    if th.cuda.is_available():
+        regressor = regressor.to(th.device("cuda:0"))
+
     for epoch in range(epochs):
+        regressor.train()
         total_loss = 0
         for graph_a, graph_b, similarity in zip(
             make_data_loader(train_a, batch_size),
             make_data_loader(train_b, batch_size),
             make_primitive_data_loader(train_sim, batch_size),
         ):
+            if th.cuda.is_available():
+                graph_a = graph_a.to(th.device("cuda:0"))
+                graph_b = graph_b.to(th.device("cuda:0"))
+                similarity = similarity.to(th.device("cuda:0"))
+
             response = regressor(graph_a, graph_b, "x")
             target_response = th.zeros((len(similarity), num_classes))
             for idx, sim in enumerate(similarity):
@@ -135,6 +153,9 @@ def train_regressor(
                     continue
                 target_response[idx, th.floor(sim).int() - 1] = sim - th.floor(sim)
                 target_response[idx, th.ceil(sim).int() - 1] = th.ceil(sim) - sim
+
+            if th.cuda.is_available():
+                target_response = target_response.to(th.device("cuda:0"))
 
             loss = F.kl_div(response.log(), target_response)
             total_loss += loss
@@ -169,14 +190,16 @@ if __name__ == "__main__":
             for h_size in config["h_sizes"]:
                 for batch_size in config["batch_sizes"]:
                     for embeddings in config["embeddings"]:
-                        train_regressor(
-                            model_type,
-                            embeddings,
-                            lr,
-                            h_size,
-                            batch_size,
-                            config["n_ary"],
-                            config["num_classes"],
-                            config["similarity_h_size"],
-                            config["epochs"],
-                        )
+                        for repeat in range(int(config["repeats"])):
+                            train_regressor(
+                                model_type,
+                                embeddings,
+                                lr,
+                                h_size,
+                                batch_size,
+                                config["n_ary"],
+                                config["num_classes"],
+                                config["similarity_h_size"],
+                                config["epochs"],
+                                repeat,
+                            )

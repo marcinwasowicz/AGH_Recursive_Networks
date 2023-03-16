@@ -47,8 +47,11 @@ def make_data_loader(dataset, batch_size):
 def evaluate_classifier(classifier, dataset_split, batch_size):
     total_correct = 0
     total = 0
+    classifier.eval()
     with th.no_grad():
         for graph in make_data_loader(dataset_split, batch_size):
+            if th.cuda.is_available():
+                graph = graph.to(th.device("cuda:0"))
             response = classifier(graph, "x", "y")
             pred = th.argmax(response, 1)
             total_correct += float(
@@ -64,18 +67,11 @@ def evaluate_classifier(classifier, dataset_split, batch_size):
 
 
 def train_classifier(
-    model_type,
-    embeddings,
-    lr,
-    h_size,
-    batch_size,
-    n_ary,
-    num_classes,
-    epochs,
+    model_type, embeddings, lr, h_size, batch_size, n_ary, num_classes, epochs, repeat
 ):
     print(
-        "Training process for the following config:\nmodel type: {}\nlearning rate: {}\nhidden size: {}\nbatch size: {}\nembeddings: {}".format(
-            model_type, lr, h_size, batch_size, embeddings
+        "Training process for the following config:\nmodel type: {}\nlearning rate: {}\nhidden size: {}\nbatch size: {}\nembeddings: {}\nrepeat :{}".format(
+            model_type, lr, h_size, batch_size, embeddings, repeat
         )
     )
     with open(f"data/sst_train_{embeddings}.pkl", "rb") as train_fd:
@@ -98,8 +94,15 @@ def train_classifier(
     best_model = None
     batch_size = batch_size
 
+    if th.cuda.is_available():
+        classifier = classifier.to(th.device("cuda:0"))
+
     for epoch in range(epochs):
+        classifier.train()
         for graph in make_data_loader(train, batch_size):
+            if th.cuda.is_available():
+                graph = graph.to(th.device("cuda:0"))
+
             response = classifier(graph, "x", "y")
             probabilities = F.log_softmax(response, 1)
             loss = F.nll_loss(
@@ -130,13 +133,15 @@ if __name__ == "__main__":
             for h_size in config["h_sizes"]:
                 for batch_size in config["batch_sizes"]:
                     for embeddings in config["embeddings"]:
-                        train_classifier(
-                            model_type,
-                            embeddings,
-                            lr,
-                            h_size,
-                            batch_size,
-                            config["n_ary"],
-                            config["num_classes"],
-                            config["epochs"],
-                        )
+                        for repeat in range(int(config["repeats"])):
+                            train_classifier(
+                                model_type,
+                                embeddings,
+                                lr,
+                                h_size,
+                                batch_size,
+                                config["n_ary"],
+                                config["num_classes"],
+                                config["epochs"],
+                                repeat,
+                            )
