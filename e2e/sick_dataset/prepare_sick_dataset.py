@@ -79,6 +79,9 @@ def parse(dirpath, cp=""):
 
 
 if __name__ == "__main__":
+    compile_stanford_parsers_cmd = "javac -cp java:java/stanford-parser/stanford-parser.jar:java/stanford-parser/stanford-parser-3.5.1-models.jar java/*.java"
+    os.system(compile_stanford_parsers_cmd)
+    
     print("=" * 80)
     print("Preprocessing SICK dataset")
     print("=" * 80)
@@ -122,6 +125,3 @@ if __name__ == "__main__":
         lowercase=False,
     )
 
-if __name__ == "__main__":
-    compile_stanford_parsers_cmd = "javac -cp java:java/stanford-parser/stanford-parser.jar:java/stanford-parser/stanford-parser-3.5.1-models.jar java/*.java"
-    os.system(compile_stanford_parsers_cmd)
