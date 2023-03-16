@@ -121,11 +121,17 @@ if __name__ == "__main__":
             f"embeddings/sick_constituency_{embeddings_name}_embeddings.pt",
         )
 
-        with open(f"data/sick_constituency_train_{embeddings_name}.pkl", "wb+") as train_fd:
+        with open(
+            f"data/sick_constituency_train_{embeddings_name}.pkl", "wb+"
+        ) as train_fd:
             pickle.dump(train, train_fd)
 
-        with open(f"data/sick_constituency_valid_{embeddings_name}.pkl", "wb+") as valid_fd:
+        with open(
+            f"data/sick_constituency_valid_{embeddings_name}.pkl", "wb+"
+        ) as valid_fd:
             pickle.dump(valid, valid_fd)
 
-        with open(f"data/sick_constituency_test_{embeddings_name}.pkl", "wb+") as test_fd:
+        with open(
+            f"data/sick_constituency_test_{embeddings_name}.pkl", "wb+"
+        ) as test_fd:
             pickle.dump(test, test_fd)

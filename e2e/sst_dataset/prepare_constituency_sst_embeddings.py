@@ -74,7 +74,9 @@ if __name__ == "__main__":
         vocabulary = [i[0] for i in read_and_split_lines("data/sst/vocab-cased.txt")]
 
         new_word_count = update_embeddings(raw_embeddings, vocabulary)
-        print(f"Encountered {new_word_count} unknown words out of {len(vocabulary)} for {embeddings_name}")
+        print(
+            f"Encountered {new_word_count} unknown words out of {len(vocabulary)} for {embeddings_name}"
+        )
 
         train = create_split(
             "data/sst/train/parents.txt",
@@ -110,11 +112,17 @@ if __name__ == "__main__":
             f"embeddings/sst_constituency_{embeddings_name}_embeddings.pt",
         )
 
-        with open(f"data/sst_constituency_train_{embeddings_name}.pkl", "wb+") as train_fd:
+        with open(
+            f"data/sst_constituency_train_{embeddings_name}.pkl", "wb+"
+        ) as train_fd:
             pickle.dump(train, train_fd)
 
-        with open(f"data/sst_constituency_valid_{embeddings_name}.pkl", "wb+") as valid_fd:
+        with open(
+            f"data/sst_constituency_valid_{embeddings_name}.pkl", "wb+"
+        ) as valid_fd:
             pickle.dump(valid, valid_fd)
 
-        with open(f"data/sst_constituency_test_{embeddings_name}.pkl", "wb+") as test_fd:
+        with open(
+            f"data/sst_constituency_test_{embeddings_name}.pkl", "wb+"
+        ) as test_fd:
             pickle.dump(test, test_fd)
