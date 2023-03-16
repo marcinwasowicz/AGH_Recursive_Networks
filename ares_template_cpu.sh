@@ -12,6 +12,7 @@
 #SBATCH --mem-per-cpu=5GB
 #SBATCH -A plgap2022-cpu
 #SBATCH -p plgrid
+#SBATCH --time=10:00:00
 
 ## przejscie do katalogu z ktorego wywolany zostal sbatch
 cd $SLURM_SUBMIT_DIR

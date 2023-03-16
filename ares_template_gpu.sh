@@ -13,6 +13,7 @@
 #SBATCH -A plgap2022-gpu
 #SBATCH -p plgrid-gpu-v100
 #SBATCH --gres=gpu:1
+#SBATCH --time=10:00:00
 
 ## przejscie do katalogu z ktorego wywolany zostal sbatch
 
@@ -27,8 +28,8 @@ pip install gensim==4.2.0
 pip install nltk==3.7
 pip install torch==1.11.0
 pip install scikit-learn==1.2.0
-pip install  dgl -f https://data.dgl.ai/wheels/cu116/repo.html
-pip install  dglgo -f https://data.dgl.ai/wheels-test/repo.html
+pip install dgl -f https://data.dgl.ai/wheels/cu116/repo.html
+pip install dglgo -f https://data.dgl.ai/wheels-test/repo.html
 
 ##python e2e/sst_dataset/prepare_constituency_sst_embeddings.py config/sst_classification.json
 ##python e2e/sick_dataset/prepare_constituency_sick_embeddings.py config/sick_regression.json
