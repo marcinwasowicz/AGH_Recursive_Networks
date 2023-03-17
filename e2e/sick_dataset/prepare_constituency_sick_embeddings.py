@@ -122,7 +122,8 @@ if __name__ == "__main__":
             )
             no_input_embedding = np.zeros((1, raw_embeddings.vector_size))
             embeddings = np.concatenate(
-                [raw_embeddings.vectors, extrapolated_embeddings], axis=0
+                [raw_embeddings.vectors, extrapolated_embeddings, no_input_embedding],
+                axis=0,
             )
 
         embeddings = th.from_numpy(embeddings).float()
