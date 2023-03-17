@@ -42,6 +42,8 @@ class SingleForgetGateTreeLSTM(nn.Module):
     def forward(self, input: RecursiveCellInput):
         x = input.get_embeddings()
         nodes_generator = dgl.topological_nodes_generator(input.get_graph())
+        if th.cuda.is_available():
+            nodes_generator = map(lambda x: x.to("cuda:0"), nodes_generator)
 
         initial_state = th.tanh(self.W(x))
         h, c = th.tensor_split(initial_state, [self._h_size], 1)
