@@ -30,7 +30,7 @@ class SingleForgetGateTreeGRU(nn.Module):
         z, r = th.sigmoid(z), th.sigmoid(r)
         h_candidate = self.U_h_candidate(r.repeat(1, self._n_ary) * h_cat)
         h_candidate = th.tanh(h_candidate)
-        h = th.sum(nodes.mailbox["h"], 1) * z + (th.ones(*z.size()) - z) * h_candidate
+        h = th.sum(nodes.mailbox["h"], 1) * z + (th.ones_like(z) - z) * h_candidate
         return {"h": h}
 
     def forward(self, input: RecursiveCellInput):

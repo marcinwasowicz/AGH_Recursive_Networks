@@ -26,7 +26,7 @@ class ChildSumTreeGRU(nn.Module):
         z = th.sigmoid(self.U_z(nodes.mailbox["h"]))
         z_sum = th.sum(z, 1)
         h = th.sum(z * nodes.mailbox["h"], 1)
-        h = h + (th.ones(*z_sum.size()) - z_sum) * h_candidate
+        h = h + (th.ones_like(z_sum) - z_sum) * h_candidate
         return {"h": h}
 
     def forward(self, input: RecursiveCellInput):

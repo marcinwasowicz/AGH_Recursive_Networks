@@ -23,7 +23,7 @@ class ChildSumTreeMGU(nn.Module):
         f_dot_h = f * nodes.mailbox["h"]
         h_candidate = th.tanh(th.sum(self.U_h_candidate(f_dot_h), 1))
         f_sum = th.sum(f, 1)
-        h = th.sum(f_dot_h, 1) + (th.ones(*f_sum.size()) - f_sum) * h_candidate
+        h = th.sum(f_dot_h, 1) + (th.ones_like(f_sum) - f_sum) * h_candidate
         return {"h": h}
 
     def forward(self, input: RecursiveCellInput):
