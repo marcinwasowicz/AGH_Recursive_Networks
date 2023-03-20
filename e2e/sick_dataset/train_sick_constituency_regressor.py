@@ -3,6 +3,7 @@ import json
 import pickle
 import sys
 import warnings
+import os
 
 import dgl
 from sklearn.utils import shuffle
@@ -27,7 +28,7 @@ from cells import (
 )
 from networks import TreeNetSimilarityRegressor
 
-
+NUM_DATA_DIR = os.path.expandvars("$SCRATCH")
 CELLS = {
     "lstm": NTreeLSTM,
     "mgu": NTreeMGU,
@@ -98,23 +99,29 @@ def train_regressor(
             model_type, lr, h_size, batch_size, embeddings, repeat
         )
     )
-    with open(f"data/sick_constituency_train_{embeddings}.pkl", "rb") as train_fd:
+    with open(
+        f"{NUM_DATA_DIR}/sick_constituency_train_{embeddings}.pkl", "rb"
+    ) as train_fd:
         train_a, train_b, train_sim = [
             shuffle(arr, random_state=42) for arr in pickle.load(train_fd)
         ]
 
-    with open(f"data/sick_constituency_valid_{embeddings}.pkl", "rb") as valid_fd:
+    with open(
+        f"{NUM_DATA_DIR}/sick_constituency_valid_{embeddings}.pkl", "rb"
+    ) as valid_fd:
         valid_a, valid_b, valid_sim = [
             shuffle(arr, random_state=42) for arr in pickle.load(valid_fd)
         ]
 
-    with open(f"data/sick_constituency_test_{embeddings}.pkl", "rb") as test_fd:
+    with open(
+        f"{NUM_DATA_DIR}/sick_constituency_test_{embeddings}.pkl", "rb"
+    ) as test_fd:
         test_a, test_b, test_sim = [
             shuffle(arr, random_state=42) for arr in pickle.load(test_fd)
         ]
 
     embedding_layer = nn.Embedding.from_pretrained(
-        th.load(f"embeddings/sick_constituency_{embeddings}_embeddings.pt")
+        th.load(f"{NUM_DATA_DIR}/sick_constituency_{embeddings}_embeddings.pt")
     )
     cell = CELLS[model_type](embedding_layer.embedding_dim, h_size, n_ary)
     regressor = TreeNetSimilarityRegressor(

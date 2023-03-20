@@ -3,6 +3,7 @@ import json
 import pickle
 import sys
 import warnings
+import os
 
 import dgl
 import torch.nn as nn
@@ -26,7 +27,7 @@ from cells import (
 )
 from networks import TreeNetClassifier
 
-
+NUM_DATA_DIR = os.path.expandvars("$SCRATCH")
 CELLS = {
     "lstm": NTreeLSTM,
     "mgu": NTreeMGU,
@@ -82,17 +83,23 @@ def train_classifier(
             model_type, lr, h_size, batch_size, embeddings, repeat
         )
     )
-    with open(f"data/sst_constituency_train_{embeddings}.pkl", "rb") as train_fd:
+    with open(
+        f"{NUM_DATA_DIR}/sst_constituency_train_{embeddings}.pkl", "rb"
+    ) as train_fd:
         train = pickle.load(train_fd)
 
-    with open(f"data/sst_constituency_valid_{embeddings}.pkl", "rb") as valid_fd:
+    with open(
+        f"{NUM_DATA_DIR}/sst_constituency_valid_{embeddings}.pkl", "rb"
+    ) as valid_fd:
         valid = pickle.load(valid_fd)
 
-    with open(f"data/sst_constituency_test_{embeddings}.pkl", "rb") as test_fd:
+    with open(
+        f"{NUM_DATA_DIR}/sst_constituency_test_{embeddings}.pkl", "rb"
+    ) as test_fd:
         test = pickle.load(test_fd)
 
     embedding_layer = nn.Embedding.from_pretrained(
-        th.load(f"embeddings/sst_constituency_{embeddings}_embeddings.pt")
+        th.load(f"{NUM_DATA_DIR}/sst_constituency_{embeddings}_embeddings.pt")
     )
     cell = CELLS[model_type](embedding_layer.embedding_dim, h_size, n_ary)
     classifier = TreeNetClassifier(embedding_layer, cell, h_size, num_classes)

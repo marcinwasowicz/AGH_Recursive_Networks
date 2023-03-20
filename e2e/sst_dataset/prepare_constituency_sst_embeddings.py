@@ -1,12 +1,16 @@
 import json
 import sys
+import os
 
 import dgl
 import gensim.downloader
 from gensim.models.fasttext import load_facebook_vectors
+from gensim.models import KeyedVectors
 import numpy as np
 import pickle
 import torch as th
+
+NUM_DATA_DIR = os.path.expandvars("$SCRATCH")
 
 
 def update_glove_embeddings(glove_embeddings, vocabulary):
@@ -88,10 +92,18 @@ def create_split(
 if __name__ == "__main__":
     with open(sys.argv[1], "r") as config_fd:
         config = json.load(config_fd)
+
     for embeddings_name in config["embeddings"]:
         vocabulary = [i[0] for i in read_and_split_lines("data/sst/vocab-cased.txt")]
         if embeddings_name.startswith("glove"):
-            raw_embeddings = gensim.downloader.load(embeddings_name)
+            if embeddings_name.startswith("glove.840B.300d"):
+                raw_embeddings = KeyedVectors.load_word2vec_format(
+                    f"{NUM_DATA_DIR}/{embeddings_name}.txt",
+                    binary=False,
+                    no_header=True,
+                )
+            else:
+                raw_embeddings = gensim.downloader.load(embeddings_name)
             new_word_count = update_glove_embeddings(raw_embeddings, vocabulary)
             print(
                 f"Encountered {new_word_count} unknown words out of {len(vocabulary)} for {embeddings_name}"
@@ -107,7 +119,7 @@ if __name__ == "__main__":
             )
         elif embeddings_name.startswith("fasttext"):
             raw_embeddings = load_facebook_vectors(
-                f"data/bin_embeddings/{embeddings_name}.bin"
+                f"{NUM_DATA_DIR}/{embeddings_name}.bin"
             )
             (
                 extrapolated_embeddings,
@@ -125,7 +137,7 @@ if __name__ == "__main__":
         embeddings = th.from_numpy(embeddings).float()
         th.save(
             embeddings,
-            f"embeddings/sst_constituency_{embeddings_name}_embeddings.pt",
+            f"{NUM_DATA_DIR}/sst_constituency_{embeddings_name}_embeddings.pt",
         )
 
         train = create_split(
@@ -148,16 +160,16 @@ if __name__ == "__main__":
         )
 
         with open(
-            f"data/sst_constituency_train_{embeddings_name}.pkl", "wb+"
+            f"{NUM_DATA_DIR}/sst_constituency_train_{embeddings_name}.pkl", "wb+"
         ) as train_fd:
             pickle.dump(train, train_fd)
 
         with open(
-            f"data/sst_constituency_valid_{embeddings_name}.pkl", "wb+"
+            f"{NUM_DATA_DIR}/sst_constituency_valid_{embeddings_name}.pkl", "wb+"
         ) as valid_fd:
             pickle.dump(valid, valid_fd)
 
         with open(
-            f"data/sst_constituency_test_{embeddings_name}.pkl", "wb+"
+            f"{NUM_DATA_DIR}/sst_constituency_test_{embeddings_name}.pkl", "wb+"
         ) as test_fd:
             pickle.dump(test, test_fd)
