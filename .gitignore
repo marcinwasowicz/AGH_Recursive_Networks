@@ -139,3 +139,7 @@ data/
 # stanford parsers
 java/**/
 java/*.class
+
+# sbatch outputs
+results/*
+process_results.py
