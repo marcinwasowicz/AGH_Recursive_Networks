@@ -30,6 +30,7 @@ pip install torch==1.11.0
 pip install scikit-learn==1.2.0
 pip install dgl -f https://data.dgl.ai/wheels/cu116/repo.html
 pip install dglgo -f https://data.dgl.ai/wheels-test/repo.html
+pip install optuna==3.1.1
 
 ##python e2e/sst_dataset/prepare_constituency_sst_embeddings.py config/sst_classification.json
 ##python e2e/sick_dataset/prepare_constituency_sick_embeddings.py config/sick_regression.json
