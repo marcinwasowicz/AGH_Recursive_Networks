@@ -28,7 +28,7 @@ class SingleForgetGateTreeMGU(nn.Module):
         h_cat = th.cat((h, h_padding), dim=1)
         f = th.sigmoid(self.U_f(h_cat))
         h_candidate = th.tanh(self.U_h_candidate(f.repeat(1, self._n_ary) * h_cat))
-        h = f * th.sum(nodes.mailbox["h"], 1) + (th.ones(*f.size()) - f) * h_candidate
+        h = f * th.sum(nodes.mailbox["h"], 1) + (th.ones_like(f) - f) * h_candidate
         return {"h": h}
 
     def forward(self, input: RecursiveCellInput):

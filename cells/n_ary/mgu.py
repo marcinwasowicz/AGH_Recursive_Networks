@@ -31,7 +31,7 @@ class NTreeMGU(nn.Module):
         f = f.view(f.size(0), self._n_ary, self._h_size)
         h = h_cat.view(h_cat.size(0), self._n_ary, self._h_size)
         f_sum = th.sum(f, 1)
-        h = (th.ones(*f_sum.size()) - f_sum) * h_candidate + th.sum(f * h, 1)
+        h = (th.ones_like(f_sum) - f_sum) * h_candidate + th.sum(f * h, 1)
         return {"h": h}
 
     def forward(self, input: RecursiveCellInput):

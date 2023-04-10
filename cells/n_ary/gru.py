@@ -33,7 +33,7 @@ class NTreeGRU(nn.Module):
         z = th.sigmoid(z).view(z.size(0), self._n_ary, self._h_size)
         z_sum = th.sum(z, 1)
         h = h_cat.view(h_cat.size(0), self._n_ary, self._h_size)
-        h = th.sum(h * z, 1) + (th.ones(*z_sum.size()) - z_sum) * h_candidate
+        h = th.sum(h * z, 1) + (th.ones_like(z_sum) - z_sum) * h_candidate
         return {"h": h}
 
     def forward(self, input: RecursiveCellInput):
