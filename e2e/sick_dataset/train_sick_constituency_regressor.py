@@ -1,6 +1,7 @@
 from copy import deepcopy
 import json
 import pickle
+from random import randint
 import sys
 import warnings
 import os
@@ -213,7 +214,7 @@ if __name__ == "__main__":
             study = optuna.create_study(
                 storage=f"sqlite:///{NUM_DATA_DIR}/sick_{model_type}_{embeddings}.db",
                 sampler=sampler,
-                study_name=f"sick_{model_type}_{embeddings}",
+                study_name=f"sick_{model_type}_{embeddings}_{str(randint(0, 100))}",
                 load_if_exists=True,
             )
             study.optimize(objective, n_trials=175)
