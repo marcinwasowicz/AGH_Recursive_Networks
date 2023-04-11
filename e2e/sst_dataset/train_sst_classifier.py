@@ -101,7 +101,7 @@ def train_classifier(
     cell = CELLS[model_type](embedding_layer.embedding_dim, h_size, n_ary)
     classifier = TreeNetClassifier(embedding_layer, cell, h_size, num_classes)
     classifier.to(device)
-    optimizer = th.optim.Adagrad(classifier.parameters(), lr=lr, weight_decay=1e-4)
+    optimizer = th.optim.Adam(classifier.parameters(), lr=lr, weight_decay=1e-4)
 
     best_acc = 0.0
     best_model = None
@@ -136,9 +136,9 @@ def objective_factory(model_type, embeddings, device):
     return lambda trial: train_classifier(
         model_type,
         embeddings,
-        trial.suggest_loguniform("lr", 0.001, 0.1),
-        trial.suggest_int("h_size", 75, 300, 25),
-        trial.suggest_categorical("batch_size", [32, 64]),
+        trial.suggest_uniform("lr", 0.0005, 0.1),
+        trial.suggest_int("h_size", 75, 300),
+        trial.suggest_categorical("batch_size", [16, 32, 64]),
         2,
         5,
         10,
@@ -166,7 +166,7 @@ if __name__ == "__main__":
                 direction="maximize",
                 load_if_exists=True,
             )
-            study.optimize(objective, n_trials=100)
+            study.optimize(objective, n_trials=150)
 
             print(
                 "Evaluation for:\nmodel type: {}\nlr: {}\nh_size: {}\nbatch size: {}\nembeddings: {}\n".format(
