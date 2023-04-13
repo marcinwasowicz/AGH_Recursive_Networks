@@ -9,6 +9,7 @@ from gensim.models import KeyedVectors
 import numpy as np
 import pickle
 import torch as th
+from transformers import DistilBertTokenizerFast, DistilBertModel
 
 NUM_DATA_DIR = os.path.expandvars("$SCRATCH")
 
@@ -71,21 +72,77 @@ def process_data(parents, tokens, labels, embeddings):
     return graph
 
 
+def process_data_bert(parents, tokens, labels, embeddings, bert_model, bert_tokenizer):
+    sources = [i for i, p in enumerate(parents) if p != 0]
+    destinations = [p - 1 for p in parents if p != 0]
+    labels = [l + 2 for l in labels]
+    graph = dgl.graph((sources, destinations), num_nodes=len(parents))
+
+    tokenizer_output = bert_tokenizer(
+        tokens, return_offsets_mapping=True, is_split_into_words=True
+    )
+    bert_token_ids, offset_mapping = (
+        tokenizer_output["input_ids"],
+        tokenizer_output["offset_mapping"][1:-1],
+    )
+    bert_token_embeddings = bert_model(th.tensor([bert_token_ids]))[
+        "last_hidden_state"
+    ][0][1:-1]
+
+    split_word_count = 1
+    start_token_idx = len(embeddings) + 1
+
+    for bert_token_id, bert_token_offset in enumerate(offset_mapping):
+        bert_token_embedding = (
+            bert_token_embeddings[bert_token_id].cpu().detach().numpy()
+        )
+        if bert_token_offset[0] == 0:
+            embeddings.append(bert_token_embedding)
+            split_word_count = 1
+            continue
+        embeddings[-1] = embeddings[-1] * split_word_count + bert_token_embedding
+        split_word_count += 1
+        embeddings[-1] = embeddings[-1] / split_word_count
+
+    idx = []
+    token_idx = start_token_idx
+
+    for deg in graph.in_degrees().tolist():
+        if deg != 0:
+            idx.append(0)
+            continue
+        idx.append(token_idx)
+        token_idx += 1
+    graph.ndata["x"] = th.tensor(idx)
+    graph.ndata["y"] = th.tensor(labels)
+    return graph
+
+
 def create_split(
     path_parents,
     path_tokens,
     path_labels,
     embeddings,
+    bert_tokenizer=None,
+    bert_model=None,
 ):
     parents = [[int(j) for j in i] for i in read_and_split_lines(path_parents)]
     tokens = read_and_split_lines(path_tokens)
     labels = [
-        [int(j) if j != "None" else -1 for j in i]
+        [int(j) if j != "None" else -3 for j in i]
         for i in read_and_split_lines(path_labels)
     ]
-    graphs = [
-        process_data(p, t, l, embeddings) for p, t, l in zip(parents, tokens, labels)
-    ]
+    if bert_tokenizer is not None and bert_model is not None:
+        graphs = [
+            process_data_bert(p, t, l, embeddings, bert_model, bert_tokenizer)
+            for p, t, l in zip(parents, tokens, labels)
+        ]
+    else:
+        graphs = [
+            process_data(p, t, l, embeddings)
+            for p, t, l in zip(parents, tokens, labels)
+        ]
+
     return graphs
 
 
@@ -95,6 +152,9 @@ if __name__ == "__main__":
 
     for embeddings_name in config["embeddings"]:
         vocabulary = [i[0] for i in read_and_split_lines("data/sst/vocab-cased.txt")]
+        bert_model = None
+        bert_tokenizer = None
+
         if embeddings_name.startswith("glove"):
             if embeddings_name.startswith("glove.840B.300d"):
                 raw_embeddings = KeyedVectors.load_word2vec_format(
@@ -133,30 +193,46 @@ if __name__ == "__main__":
                 [raw_embeddings.vectors, extrapolated_embeddings, no_input_embedding],
                 axis=0,
             )
+        elif embeddings_name.startswith("distilbert"):
+            bert_tokenizer = DistilBertTokenizerFast.from_pretrained(
+                "distilbert-base-uncased"
+            )
+            bert_model = DistilBertModel.from_pretrained("distilbert-base-uncased")
+            raw_embeddings = []
+            embeddings = raw_embeddings
+
+        train = create_split(
+            "data/sst/train/parents.txt",
+            "data/sst/train/sents.txt",
+            "data/sst/train/labels.txt",
+            raw_embeddings,
+            bert_tokenizer,
+            bert_model,
+        )
+        valid = create_split(
+            "data/sst/dev/parents.txt",
+            "data/sst/dev/sents.txt",
+            "data/sst/dev/labels.txt",
+            raw_embeddings,
+            bert_tokenizer,
+            bert_model,
+        )
+        test = create_split(
+            "data/sst/test/parents.txt",
+            "data/sst/test/sents.txt",
+            "data/sst/test/labels.txt",
+            raw_embeddings,
+            bert_tokenizer,
+            bert_model,
+        )
+
+        if embeddings_name.startswith("distilbert"):
+            embeddings = np.array([np.zeros_like(raw_embeddings[0])] + raw_embeddings)
 
         embeddings = th.from_numpy(embeddings).float()
         th.save(
             embeddings,
             f"{NUM_DATA_DIR}/sst_constituency_{embeddings_name}_embeddings.pt",
-        )
-
-        train = create_split(
-            "data/sst/train/parents.txt",
-            "data/sst/train/sents.toks",
-            "data/sst/train/labels.txt",
-            raw_embeddings,
-        )
-        valid = create_split(
-            "data/sst/dev/parents.txt",
-            "data/sst/dev/sents.toks",
-            "data/sst/dev/labels.txt",
-            raw_embeddings,
-        )
-        test = create_split(
-            "data/sst/test/parents.txt",
-            "data/sst/test/sents.toks",
-            "data/sst/test/labels.txt",
-            raw_embeddings,
         )
 
         with open(
