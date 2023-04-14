@@ -136,9 +136,9 @@ def objective_factory(model_type, embeddings, device):
     return lambda trial: train_classifier(
         model_type,
         embeddings,
-        trial.suggest_uniform("lr", 0.0005, 0.1),
-        trial.suggest_int("h_size", 75, 300),
-        trial.suggest_categorical("batch_size", [16, 32, 64]),
+        trial.suggest_loguniform("lr", 0.001, 0.1),
+        trial.suggest_int("h_size", 70, 300, 20),
+        trial.suggest_categorical("batch_size", [32, 64]),
         2,
         5,
         10,
@@ -162,11 +162,11 @@ if __name__ == "__main__":
             study = optuna.create_study(
                 storage=f"sqlite:///{NUM_DATA_DIR}/sst_{model_type}_{embeddings}.db",
                 sampler=sampler,
-                study_name=f"sst_{model_type}_{embeddings}_{str(randint(0, 100))}",
+                study_name=f"sst_{model_type}_{embeddings}_{str(randint(0, 1000))}",
                 direction="maximize",
                 load_if_exists=True,
             )
-            study.optimize(objective, n_trials=150)
+            study.optimize(objective, n_trials=100)
 
             print(
                 "Evaluation for:\nmodel type: {}\nlr: {}\nh_size: {}\nbatch size: {}\nembeddings: {}\n".format(
@@ -177,7 +177,7 @@ if __name__ == "__main__":
                     embeddings,
                 )
             )
-            
+
             for repeat in range(5):
                 print(f"Repeat: {repeat}")
                 test_acc = train_classifier(
