@@ -1,11 +1,13 @@
 from copy import deepcopy
 import json
 import pickle
+from random import randint
 import sys
 import warnings
 import os
 
 import dgl
+import optuna
 import torch.nn as nn
 import torch.nn.functional as F
 import torch as th
@@ -75,14 +77,9 @@ def train_classifier(
     n_ary,
     num_classes,
     epochs,
-    repeat,
     device,
+    test_best_model=False,
 ):
-    print(
-        "Training process for the following config:\nmodel type: {}\nlearning rate: {}\nhidden size: {}\nbatch size: {}\nembeddings: {}\nrepeat :{}".format(
-            model_type, lr, h_size, batch_size, embeddings, repeat
-        )
-    )
     with open(
         f"{NUM_DATA_DIR}/sst_constituency_train_{embeddings}.pkl", "rb"
     ) as train_fd:
@@ -104,7 +101,7 @@ def train_classifier(
     cell = CELLS[model_type](embedding_layer.embedding_dim, h_size, n_ary)
     classifier = TreeNetClassifier(embedding_layer, cell, h_size, num_classes)
     classifier.to(device)
-    optimizer = th.optim.Adagrad(classifier.parameters(), lr=lr, weight_decay=1e-4)
+    optimizer = th.optim.Adam(classifier.parameters(), lr=lr, weight_decay=1e-4)
 
     best_acc = 0.0
     best_model = None
@@ -130,32 +127,69 @@ def train_classifier(
             best_acc = acc
             best_model = deepcopy(classifier)
 
-    acc = evaluate_classifier(best_model, test, batch_size, device)
-    print("Test accuracy {:.4f}".format(acc))
+    if test_best_model:
+        return evaluate_classifier(best_model, test, batch_size, device)
+    return best_acc
+
+
+def objective_factory(model_type, embeddings, device):
+    return lambda trial: train_classifier(
+        model_type,
+        embeddings,
+        trial.suggest_loguniform("lr", 0.001, 0.1),
+        trial.suggest_int("h_size", 70, 300, 20),
+        trial.suggest_categorical("batch_size", [32, 64]),
+        2,
+        5,
+        10,
+        device,
+        False,
+    )
 
 
 if __name__ == "__main__":
     th.manual_seed = 42
     global_device = "cuda:0" if th.cuda.is_available() else "cpu"
     print(f"Using device type: {global_device}")
+
     with open(sys.argv[1], "r") as config_fd:
         config = json.load(config_fd)
 
     for model_type in config["model_types"]:
-        for lr in config["lrs"]:
-            for h_size in config["h_sizes"]:
-                for batch_size in config["batch_sizes"]:
-                    for embeddings in config["embeddings"]:
-                        for repeat in range(int(config["repeats"])):
-                            train_classifier(
-                                model_type,
-                                embeddings,
-                                lr,
-                                h_size,
-                                batch_size,
-                                config["n_ary"],
-                                config["num_classes"],
-                                config["epochs"],
-                                repeat,
-                                global_device,
-                            )
+        for embeddings in config["embeddings"]:
+            objective = objective_factory(model_type, embeddings, global_device)
+            sampler = optuna.samplers.TPESampler(42)
+            study = optuna.create_study(
+                storage=f"sqlite:///{NUM_DATA_DIR}/sst_{model_type}_{embeddings}.db",
+                sampler=sampler,
+                study_name=f"sst_{model_type}_{embeddings}_{str(randint(0, 1000))}",
+                direction="maximize",
+                load_if_exists=True,
+            )
+            study.optimize(objective, n_trials=100)
+
+            print(
+                "Evaluation for:\nmodel type: {}\nlr: {}\nh_size: {}\nbatch size: {}\nembeddings: {}\n".format(
+                    model_type,
+                    study.best_params["lr"],
+                    study.best_params["h_size"],
+                    study.best_params["batch_size"],
+                    embeddings,
+                )
+            )
+
+            for repeat in range(5):
+                print(f"Repeat: {repeat}")
+                test_acc = train_classifier(
+                    model_type,
+                    embeddings,
+                    study.best_params["lr"],
+                    study.best_params["h_size"],
+                    study.best_params["batch_size"],
+                    2,
+                    5,
+                    10,
+                    global_device,
+                    True,
+                )
+                print("Test accuracy: {:.4f}".format(test_acc))

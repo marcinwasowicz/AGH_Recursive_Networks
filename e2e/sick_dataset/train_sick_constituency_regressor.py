@@ -1,11 +1,13 @@
 from copy import deepcopy
 import json
 import pickle
+from random import randint
 import sys
 import warnings
 import os
 
 import dgl
+import optuna
 from sklearn.utils import shuffle
 import torch.nn as nn
 import torch.nn.functional as F
@@ -85,20 +87,16 @@ def train_regressor(
     model_type,
     embeddings,
     lr,
+    l2,
     h_size,
+    sim_h_size,
     batch_size,
     n_ary,
     num_classes,
-    sim_h_size,
     epochs,
-    repeat,
     device,
+    test_best_model=False,
 ):
-    print(
-        "Training process for the following config:\nmodel type: {}\nlearning rate: {}\nhidden size: {}\nbatch size: {}\nembeddings: {}\nrepeat: {}".format(
-            model_type, lr, h_size, batch_size, embeddings, repeat
-        )
-    )
     with open(
         f"{NUM_DATA_DIR}/sick_constituency_train_{embeddings}.pkl", "rb"
     ) as train_fd:
@@ -132,7 +130,7 @@ def train_regressor(
         num_classes,
     )
     regressor.to(device)
-    optimizer = th.optim.Adagrad(regressor.parameters(), lr=lr, weight_decay=1e-4)
+    optimizer = th.optim.Adam(regressor.parameters(), lr=lr, weight_decay=l2)
 
     best_mse = 16.00  # Theoretically maximal MSE we can get
     best_model = None
@@ -178,35 +176,75 @@ def train_regressor(
         if mse < best_mse:
             best_mse = mse
             best_model = deepcopy(regressor)
+    if test_best_model:
+        return evaluate_regressor(
+            best_model, test_a, test_b, test_sim, batch_size, num_classes, device
+        )
+    return best_mse
 
-    mse = evaluate_regressor(
-        best_model, test_a, test_b, test_sim, batch_size, num_classes, device
+
+def objective_factory(model_type, embeddings, device):
+    return lambda trial: train_regressor(
+        model_type,
+        embeddings,
+        trial.suggest_loguniform("lr", 0.001, 0.1),
+        trial.suggest_loguniform("l2", 1e-6, 1e-2),
+        trial.suggest_int("h_size", 70, 300, 20),
+        trial.suggest_int("sim_h_size", 20, 100, 20),
+        trial.suggest_categorical("batch_size", [32, 64]),
+        2,
+        5,
+        10,
+        device,
+        False,
     )
-    print("Test MSE {:.4f}".format(mse))
 
 
 if __name__ == "__main__":
     global_device = "cuda:0" if th.cuda.is_available() else "cpu"
     print(f"Using device type: {global_device}")
+
     with open(sys.argv[1], "r") as config_fd:
         config = json.load(config_fd)
 
     for model_type in config["model_types"]:
-        for lr in config["lrs"]:
-            for h_size in config["h_sizes"]:
-                for batch_size in config["batch_sizes"]:
-                    for embeddings in config["embeddings"]:
-                        for repeat in range(int(config["repeats"])):
-                            train_regressor(
-                                model_type,
-                                embeddings,
-                                lr,
-                                h_size,
-                                batch_size,
-                                config["n_ary"],
-                                config["num_classes"],
-                                config["similarity_h_size"],
-                                config["epochs"],
-                                repeat,
-                                global_device,
-                            )
+        for embeddings in config["embeddings"]:
+            objective = objective_factory(model_type, embeddings, global_device)
+            sampler = optuna.samplers.TPESampler(42)
+            study = optuna.create_study(
+                storage=f"sqlite:///{NUM_DATA_DIR}/sick_{model_type}_{embeddings}.db",
+                sampler=sampler,
+                study_name=f"sick_{model_type}_{embeddings}_{str(randint(0, 1000))}",
+                load_if_exists=True,
+            )
+            study.optimize(objective, n_trials=175)
+
+            print(
+                "Evaluation for:\nmodel type: {}\nlr: {}\nl2: {}\nh_size: {}\nsim_h_size: {}\nbatch_size: {}\nembeddings: {}\n".format(
+                    model_type,
+                    study.best_params["lr"],
+                    study.best_params["l2"],
+                    study.best_params["h_size"],
+                    study.best_params["sim_h_size"],
+                    study.best_params["batch_size"],
+                    embeddings,
+                )
+            )
+
+            for repeat in range(5):
+                print(f"Repeat: {repeat}")
+                test_mse = train_regressor(
+                    model_type,
+                    embeddings,
+                    study.best_params["lr"],
+                    study.best_params["l2"],
+                    study.best_params["h_size"],
+                    study.best_params["sim_h_size"],
+                    study.best_params["batch_size"],
+                    2,
+                    5,
+                    10,
+                    global_device,
+                    True,
+                )
+                print("Test MSE: {:.4f}".format(test_mse))
