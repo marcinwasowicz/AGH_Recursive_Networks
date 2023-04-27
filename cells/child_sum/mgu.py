@@ -10,7 +10,7 @@ class ChildSumTreeMGU(nn.Module):
         super(ChildSumTreeMGU, self).__init__()
         self._h_size = h_size
 
-        self.W = nn.Linear(x_size, h_size)
+        self.W = nn.Linear(x_size, 2 * h_size)
 
         self.U_h_candidate = nn.Linear(h_size, h_size)
         self.U_f = nn.Linear(h_size, h_size)
@@ -32,8 +32,12 @@ class ChildSumTreeMGU(nn.Module):
         if th.cuda.is_available():
             nodes_generator = map(lambda x: x.to("cuda:0"), nodes_generator)
 
-        initial_state = th.tanh(self.W(x))
-        input.get_graph().ndata["h"] = initial_state
+        initial_state = self.W(x)
+        f, h_candidate = th.tensor_split(initial_state, [self._h_size], 1)
+        f = th.sigmoid(f)
+        h_candidate = th.tanh(h_candidate)
+        h = (th.ones_like(f) - f) * h_candidate
+        input.get_graph().ndata["h"] = h
 
         input.get_graph().prop_nodes(
             nodes_generator=nodes_generator,

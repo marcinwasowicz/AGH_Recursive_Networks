@@ -72,6 +72,7 @@ def train_classifier(
     model_type,
     embeddings,
     lr,
+    l2,
     h_size,
     batch_size,
     n_ary,
@@ -101,7 +102,7 @@ def train_classifier(
     cell = CELLS[model_type](embedding_layer.embedding_dim, h_size, n_ary)
     classifier = TreeNetClassifier(embedding_layer, cell, h_size, num_classes)
     classifier.to(device)
-    optimizer = th.optim.Adam(classifier.parameters(), lr=lr, weight_decay=1e-4)
+    optimizer = th.optim.Adam(classifier.parameters(), lr=lr, weight_decay=l2)
 
     best_acc = 0.0
     best_model = None
@@ -136,9 +137,10 @@ def objective_factory(model_type, embeddings, device):
     return lambda trial: train_classifier(
         model_type,
         embeddings,
-        trial.suggest_loguniform("lr", 0.001, 0.1),
-        trial.suggest_int("h_size", 70, 300, 20),
-        trial.suggest_categorical("batch_size", [32, 64]),
+        trial.suggest_loguniform("lr", 0.0001, 0.1),
+        trial.suggest_loguniform("l2", 1e-7, 1e-3),
+        trial.suggest_int("h_size", 50, 300, 50),
+        trial.suggest_categorical("batch_size", [32, 64, 128, 256]),
         2,
         5,
         10,
@@ -166,12 +168,13 @@ if __name__ == "__main__":
                 direction="maximize",
                 load_if_exists=True,
             )
-            study.optimize(objective, n_trials=100)
+            study.optimize(objective, n_trials=150)
 
             print(
-                "Evaluation for:\nmodel type: {}\nlr: {}\nh_size: {}\nbatch size: {}\nembeddings: {}\n".format(
+                "Evaluation for:\nmodel type: {}\nlr: {}\nl2: {}\nh_size: {}\nbatch size: {}\nembeddings: {}\n".format(
                     model_type,
                     study.best_params["lr"],
+                    study.best_params["l2"],
                     study.best_params["h_size"],
                     study.best_params["batch_size"],
                     embeddings,
@@ -184,6 +187,7 @@ if __name__ == "__main__":
                     model_type,
                     embeddings,
                     study.best_params["lr"],
+                    study.best_params["l2"],
                     study.best_params["h_size"],
                     study.best_params["batch_size"],
                     2,
