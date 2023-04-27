@@ -142,4 +142,4 @@ java/*.class
 
 # sbatch outputs
 results*/*
-process_results.py
+process_results*.py

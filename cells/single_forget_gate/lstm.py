@@ -11,7 +11,7 @@ class SingleForgetGateTreeLSTM(nn.Module):
         self._n_ary = n_ary
         self._h_size = h_size
 
-        self.W = nn.Linear(x_size, 2 * h_size)
+        self.W = nn.Linear(x_size, 3 * h_size)
 
         self.U = nn.Linear(n_ary * h_size, 4 * h_size)
 
@@ -45,8 +45,14 @@ class SingleForgetGateTreeLSTM(nn.Module):
         if th.cuda.is_available():
             nodes_generator = map(lambda x: x.to("cuda:0"), nodes_generator)
 
-        initial_state = th.tanh(self.W(x))
-        h, c = th.tensor_split(initial_state, [self._h_size], 1)
+        initial_state = self.W(x)
+        i, o, u = th.tensor_split(initial_state, [self._h_size, 2 * self._h_size], 1)
+        i = th.sigmoid(i)
+        o = th.sigmoid(o)
+        u = th.tanh(u)
+        c = i * u
+        h = o * th.tanh(c)
+
         input.get_graph().ndata["h"] = h
         input.get_graph().ndata["c"] = c
 

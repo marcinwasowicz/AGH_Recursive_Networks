@@ -187,11 +187,11 @@ def objective_factory(model_type, embeddings, device):
     return lambda trial: train_regressor(
         model_type,
         embeddings,
-        trial.suggest_loguniform("lr", 0.001, 0.1),
-        trial.suggest_loguniform("l2", 1e-6, 1e-2),
-        trial.suggest_int("h_size", 70, 300, 20),
-        trial.suggest_int("sim_h_size", 20, 100, 20),
-        trial.suggest_categorical("batch_size", [32, 64]),
+        trial.suggest_loguniform("lr", 0.0001, 0.1),
+        trial.suggest_loguniform("l2", 1e-7, 1e-3),
+        trial.suggest_int("h_size", 50, 300, 50),
+        trial.suggest_int("sim_h_size", 25, 100, 25),
+        trial.suggest_categorical("batch_size", [32, 64, 124, 256]),
         2,
         5,
         10,
@@ -217,7 +217,7 @@ if __name__ == "__main__":
                 study_name=f"sick_{model_type}_{embeddings}_{str(randint(0, 1000))}",
                 load_if_exists=True,
             )
-            study.optimize(objective, n_trials=175)
+            study.optimize(objective, n_trials=200)
 
             print(
                 "Evaluation for:\nmodel type: {}\nlr: {}\nl2: {}\nh_size: {}\nsim_h_size: {}\nbatch_size: {}\nembeddings: {}\n".format(
