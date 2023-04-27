@@ -154,8 +154,8 @@ def train_regressor(
                 if th.floor(sim).int() == th.ceil(sim).int():
                     target_response[idx, sim.int() - 1] = 1
                     continue
-                target_response[idx, th.floor(sim).int() - 1] = sim - th.floor(sim)
-                target_response[idx, th.ceil(sim).int() - 1] = th.ceil(sim) - sim
+                target_response[idx, th.floor(sim).int() - 1] = th.ceil(sim) - sim
+                target_response[idx, th.ceil(sim).int() - 1] = sim - th.floor(sim)
 
             target_response = target_response.to(device)
 

@@ -26,6 +26,7 @@ pip install nltk==3.7
 pip install torch==1.11.0
 pip install scikit-learn==1.2.0
 pip install optuna==3.1.1
+pip install transformers==4.27.4
 
 ##python e2e/sst_dataset/prepare_constituency_sst_embeddings.py config/sst_classification.json
 ##python e2e/sick_dataset/prepare_constituency_sick_embeddings.py config/sick_regression.json
