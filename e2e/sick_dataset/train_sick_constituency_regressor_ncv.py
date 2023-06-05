@@ -169,9 +169,9 @@ def objective_factory(
         lr, l2, h_size, sim_h_size, batch_size = (
             trial.suggest_loguniform("lr", 0.0001, 0.1),
             trial.suggest_loguniform("l2", 1e-7, 1e-3),
-            trial.suggest_int("h_size", 50, 300, 50),
+            trial.suggest_int("h_size", 25, 350, 25),
             trial.suggest_int("sim_h_size", 25, 100, 25),
-            trial.suggest_categorical("batch_size", [32, 64, 124, 256]),
+            trial.suggest_categorical("batch_size", [32, 64, 128, 256, 512]),
         )
         results = []
         for step, (train_idx, valid_idx) in enumerate(
@@ -268,12 +268,11 @@ if __name__ == "__main__":
                 )
                 sampler = optuna.samplers.TPESampler(42)
                 study = optuna.create_study(
-                    storage=f"sqlite:///{NUM_DATA_DIR}/sick_{model_type}_{embeddings}.db",
                     sampler=sampler,
                     study_name=f"sick_{model_type}_{embeddings}_{str(randint(0, 1000))}",
                     load_if_exists=True,
                 )
-                study.optimize(objective, n_trials=15)
+                study.optimize(objective, n_trials=25)
 
                 print(
                     "Evaluation for:\nmodel type: {}\nlr: {}\nl2: {}\nh_size: {}\nsim_h_size: {}\nbatch_size: {}\nembeddings: {}\n".format(

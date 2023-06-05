@@ -189,9 +189,9 @@ def objective_factory(model_type, embeddings, device):
         embeddings,
         trial.suggest_loguniform("lr", 0.0001, 0.1),
         trial.suggest_loguniform("l2", 1e-7, 1e-3),
-        trial.suggest_int("h_size", 50, 300, 50),
+        trial.suggest_int("h_size", 25, 350, 25),
         trial.suggest_int("sim_h_size", 25, 100, 25),
-        trial.suggest_categorical("batch_size", [32, 64, 124, 256]),
+        trial.suggest_categorical("batch_size", [32, 64, 128, 256, 512]),
         2,
         5,
         10,
@@ -212,12 +212,11 @@ if __name__ == "__main__":
             objective = objective_factory(model_type, embeddings, global_device)
             sampler = optuna.samplers.TPESampler(42)
             study = optuna.create_study(
-                storage=f"sqlite:///{NUM_DATA_DIR}/sick_{model_type}_{embeddings}.db",
                 sampler=sampler,
                 study_name=f"sick_{model_type}_{embeddings}_{str(randint(0, 1000))}",
                 load_if_exists=True,
             )
-            study.optimize(objective, n_trials=200)
+            study.optimize(objective, n_trials=350)
 
             print(
                 "Evaluation for:\nmodel type: {}\nlr: {}\nl2: {}\nh_size: {}\nsim_h_size: {}\nbatch_size: {}\nembeddings: {}\n".format(
